@@ -100,12 +100,12 @@ def evaluate(encoder, decoder, smi, smi_dic, longest_smi) :
 
     with torch.no_grad() :
         e_out, e_last, self_attn = encoder(smint)
-        d_out, _, cross_attn = decoder(e_out, e_last)
+        prediction, cross_attn = decoder(e_out, e_last)
 
     cross_attn, self_attn = cross_attn.squeeze(), self_attn.squeeze()
     cross_attn, self_attn = cross_attn.cpu().numpy(), self_attn.cpu().numpy()
 
-    return d_out, cross_attn, self_attn
+    return prediction, cross_attn, self_attn
 
 
 
@@ -124,7 +124,7 @@ def plot_attn(matrix, smi, mode, path = "", name = "") :
     ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
     ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
     
-    plt.savefig(f"{path}{name}.png")
+    plt.savefig(f"{path}/{name}.png")
     plt.show()
         
 
@@ -139,7 +139,7 @@ def visualize(encoder,
               path = "",
               name = 1) :
     
-    _, cross_attn, self_attn = evaluate(encoder, decoder, smi, smi_dic, longest_smi)
+    prediction, cross_attn, self_attn = evaluate(encoder, decoder, smi, smi_dic, longest_smi)
 
     # attn, self_attn = attn.squeeze(), self_attn.squeeze()
     # attn, self_attn = attn.cpu().numpy(), self_attn.cpu().numpy()

@@ -2,8 +2,8 @@ import torch
 import rdkit
 import pandas as pd
 import numpy as np
-from torch.utils.data import Dataset
-
+from torch.utils.data import Dataset, DataLoader
+from utils.helper import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Data: 
@@ -98,10 +98,14 @@ class Data:
 
 
     def extract(self) :
-        print(f"Train data extracted\nSize: {len(self.smint_list)}\nLongest SMILES: {self.longest_smi}\nLongest Coordinate: {self.longest_coor}")
+        print(f"Data successfully extracted")
         print("----------------------------------------")
-        print(f"Sample x: {self.smint_list[0]}")
-        print(f"Sample y: {self.coor_list[0]}")
+        print(f"Size: {len(self.smint_list)}\nLongest SMILES: {self.longest_smi}\nLongest Coordinate: {self.longest_coor}")
+        print("----------------------------------------")
+        print(f"smi_list (SMILES List):\n\t {self.smi_list[0]}")
+        print(f"smint_list (SMILES Integer List):\n\t {self.smint_list[0]}")
+        print(f"coor_list (Coordinate List):\n\t {self.coor_list[0]}")
+        print(f"np_coor_list (Normalized + Padded Coordinate List):\n\t {pad_coor(normalize_coor(self.coor_list), longest_coor=self.longest_coor)[0]}")
         return self.smint_list, self.coor_list, self.smi_list, self.smi_dic, self.longest_smi, self.longest_coor
 
 
@@ -149,3 +153,20 @@ def pad_coor(coor_list, longest_coor) :
         else :
             p_coor_list.append(i)
     return p_coor_list
+
+
+
+
+smint_list, coor_list, smi_list, smi_dic, longest_smi, longest_coor = Data(smi_path='./data/smi_data.csv',
+                                                                           coor_path='./data/coor_data.sdf').extract()
+p_coor_list = pad_coor(coor_list, longest_coor)
+np_coor_list = pad_coor(normalize_coor(coor_list), longest_coor)
+train_x, train_y, test_x, test_y = train_test_split(x = smint_list, y = np_coor_list, ratio=0.95)
+
+
+
+B = 16
+train_set = TorchDataset(train_x, train_y)
+test_set = TorchDataset(test_x, test_y)
+train_loader = DataLoader(train_set, batch_size = B, shuffle = True)
+test_loader = DataLoader(test_set, batch_size = B)

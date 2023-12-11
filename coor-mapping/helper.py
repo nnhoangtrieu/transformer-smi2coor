@@ -52,34 +52,7 @@ def count_atoms(smi):
         return None
 
 
-
-# def visualize(attn, n_input, n_head, smi, output_path) :
-#     x, y = attn.size()
-#     attn = attn.cpu().numpy()
     
-#     end_index = smi.index("E")
-#     smi = smi[:end_index]
-#     smi_len = len(smi)
-#     smi = [atom.replace('X', 'Na') for atom in smi]
-#     smi = [atom.replace('Y', 'Cl') for atom in smi]
-#     smi = [atom.replace('Z', 'Br') for atom in smi]
-#     smi = [atom.replace('T', 'Ba') for atom in smi]
-#     num_atom = count_atoms(''.join(smi))
-
-#     attn = attn[:num_atom, :smi_len]
-
-
-#     fig = plt.figure()
-#     ax = fig.add_subplot(111)
-#     cax = ax.matshow(attn, cmap = 'viridis')
-#     fig.colorbar(cax)
-#     ax.set_xticklabels([''] + smi)
-#     ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
-#     ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
-#     plt.savefig(f"{output_path}/Input {n_input +1} Head {n_head + 1}")
-#     plt.show()
-    
-
 
 def int2smi(input, invert_dic) :
     output = []
