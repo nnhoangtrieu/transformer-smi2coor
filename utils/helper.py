@@ -101,11 +101,12 @@ def evaluate(encoder, decoder, smi, smi_dic, longest_smi) :
     with torch.no_grad() :
         e_out, e_last, self_attn = encoder(smint)
         prediction, cross_attn = decoder(e_out, e_last)
-
+    
+    num_head = cross_attn.size(1)
     cross_attn, self_attn = cross_attn.squeeze(), self_attn.squeeze()
     cross_attn, self_attn = cross_attn.cpu().numpy(), self_attn.cpu().numpy()
 
-    return prediction, cross_attn, self_attn
+    return prediction, cross_attn, self_attn, num_head
 
 
 
@@ -139,8 +140,9 @@ def visualize(encoder,
               path = "",
               name = 1) :
     
-    prediction, cross_attn, self_attn = evaluate(encoder, decoder, smi, smi_dic, longest_smi)
-
+    prediction, cross_attn, self_attn, num_head = evaluate(encoder, decoder, smi, smi_dic, longest_smi)
+    print(f"cross attn: {cross_attn.shape}")
+    print(f"self attn: {self_attn.shape}")
     # attn, self_attn = attn.squeeze(), self_attn.squeeze()
     # attn, self_attn = attn.cpu().numpy(), self_attn.cpu().numpy()
 
@@ -153,5 +155,7 @@ def visualize(encoder,
         matrix = cross_attn[:coor_len, :smi_len]
     if mode == "self" :
         matrix = self_attn[:smi_len, :smi_len]
+    
 
-    plot_attn(matrix, smi, mode, path, name)
+    for i in range(1, num_head) :
+        plot_attn(matrix[i], smi, mode, path, f"H{i}-{name}")
