@@ -1,34 +1,53 @@
-# DIM_MODEL : Dimension (hidden size) of the model
+# DIM_MODEL : Dimension (hidden size) of the model. 
+#           : It should be 128, 256, 512 (I find 512 is too big), and it should also be divisible for NUM_HEAD
+
 
 # NUM_BLOCK : Number of encoder and decoder block connected
 
+
 # NUM_HEAD : Number of attention head
+
 
 # DROPOUT : Dropout rate of nn.Dropout() layer
 
+
 # FORWARD_EXTENSION : The scalar to scale up the network (Apply for only some layers, DIM_MODEL * FORWARD_EXTENSION)
+
 
 # N_EPOCHS : Number of epochs
 
+
 # TEACHER_FORCING_RATE : For example, if set to 0.4, first 40% epoch will be trained using teacher forcing. 
-#                        Teacher forcing: Using known target in training data to predict the next state of RNN.
-#                        NO Teacher Forcing: Using prediction as the input for predicting the next state
+#                      + Teacher forcing: Using known target in training data to predict the next state of RNN.
+#                      + NO Teacher Forcing: Using prediction as the input for predicting the next state
+
 
 # VISUAL_PATH : Name of folder to output attention image during training. I chose 5 random SMILES to output for each train.
+#             : I have already created a folder name "attention image"
 
 
 
 # ---------------------------HYPERPARAMETER-------------------------------------- #
-DIM_MODEL = 256
+DIM_MODEL = 128
 NUM_BLOCK = 1
-NUM_HEAD = 4
+NUM_HEAD = 2
 DROPOUT = 0.5
 FORWARD_EXTENSION = 1
 N_EPOCHS = 50
 LEARNING_RATE = 0.001
 TEACHER_FORCING_RATE = 0.4
-VISUAL_PATH = 'test folder'
+VISUAL_PATH = 'attention image'
 # ------------------------------------------------------------------------------- #
+
+
+
+
+
+
+
+
+
+
 
 
 
