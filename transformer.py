@@ -2,8 +2,86 @@ import torch
 import torch.nn as nn 
 import torch.nn.functional as F
 import time
+import random
 from utils.data_preprocess import train_loader, test_loader, smi_list, smi_dic, smint_list, coor_list, np_coor_list, longest_coor, longest_smi, device
 from utils.helper import visualize, timeSince
+
+
+
+# DIM_MODEL : Dimension (hidden size) of the model
+# NUM_BLOCK : Number of encoder and decoder block connected
+# NUM_HEAD : Number of attention head
+# DROPOUT : Dropout rate of nn.Dropout() layer
+# FORWARD_EXTENSION : The scalar to scale up the network (Apply for only some layers, DIM_MODEL * FORWARD_EXTENSION)
+# N_EPOCHS : Number of epochs
+# TEACHER_FORCING_RATE : For example, if set to 0.4, first 40% epoch will be trained using teacher forcing. 
+#                        Teacher forcing: Using known target in training data to predict the next state of RNN.
+#                        NO Teacher Forcing: Using prediction as the input for predicting the next state
+# VISUAL_PATH : Name of folder to output attention image during training. I chose 5 random SMILES to output for each train.
+
+
+# ---------------------------HYPERPARAMETER-------------------------------------- #
+DIM_MODEL = 256
+NUM_BLOCK = 1
+NUM_HEAD = 4
+DROPOUT = 0.5
+FORWARD_EXTENSION = 1
+N_EPOCHS = 50
+LEARNING_RATE = 0.001
+TEACHER_FORCING_RATE = 0.4
+VISUAL_PATH = 'test folder'
+# ------------------------------------------------------------------------------- #
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class SelfAttention(nn.Module) :
@@ -103,8 +181,9 @@ class LSTM(nn.Module) :
         super(LSTM, self).__init__()
 
         self.longest_coor = longest_coor
+
         self.cross_attn = SelfAttention(dim_model, num_head)
-        
+
         self.lstm = nn.LSTM(3 + dim_model, dim_model, batch_first=True)
 
         self.out = nn.Linear(dim_model, output_size)
@@ -116,7 +195,7 @@ class LSTM(nn.Module) :
 
         d_input = torch.zeros(B, 1, 3).to(device)
 
-        d_hidden = e_last 
+        d_hidden = e_last
 
         d_outputs, cross_attn = [], []
 
@@ -129,12 +208,13 @@ class LSTM(nn.Module) :
                 d_input = target[:, i, :].unsqueeze(1)
             else :
                 d_input = d_output
-        
-        d_outputs = torch.cat(d_outputs, dim = 1)
-        cross_attn = torch.cat(cross_attn, dim = 1)
 
+        d_outputs = torch.cat(d_outputs, dim = 1)
+
+        cross_attn = torch.cat(cross_attn, dim = 2)
+        
         return d_outputs, d_hidden, cross_attn
-    
+
 
     def forward_step(self, d_input, d_hidden, e_all) :
         Q = d_hidden.permute(1,0,2)
@@ -149,8 +229,7 @@ class LSTM(nn.Module) :
 
         output = self.out(output)
 
-        return output, d_hidden, attn
-        
+        return output, d_hidden, attn_distribution
 class DecoderBlock(nn.Module) :
     def __init__(self, dim_model, num_head, longest_coor, fe, dropout) :
         super(DecoderBlock, self).__init__()
@@ -244,6 +323,7 @@ def train_epoch(train_loader,test_loader, encoder, decoder, encoder_optimizer,
 
     return total_loss / len(train_loader), total_test_loss / len(test_loader)
 
+r = random.randint(1, len(smi_list))
 
 def train(train_loader, test_loader, encoder, decoder, n_epochs, learning_rate=0.001,
                print_every=1, visual_path= "", tf_rate = 1):
@@ -269,9 +349,9 @@ def train(train_loader, test_loader, encoder, decoder, n_epochs, learning_rate=0
       train_loss_total += train_loss
       test_loss_total += test_loss
 
-    #   for i in range(5) :
-    #      visualize(encoder, decoder, smi_list[i], smi_dic, longest_smi, mode="cross", path=f"{visual_path}", name=f"{i}-cross-E{epoch}")
-    #      visualize(encoder, decoder, smi_list[i], smi_dic, longest_smi, mode="self", path=f"{visual_path}", name=f"{i}-self-E{epoch}")
+      for i in range(5) :
+         visualize(encoder, decoder, smi_list[r], smi_dic, longest_smi, mode="cross", path=f"{visual_path}", name=f"R{i}-CROSS-E{epoch}")
+         visualize(encoder, decoder, smi_list[r], smi_dic, longest_smi, mode="self", path=f"{visual_path}", name=f"R{i}-SELF-E{epoch}")
 
       if epoch % print_every == 0:
           train_loss_avg = train_loss_total / print_every
@@ -284,27 +364,27 @@ def train(train_loader, test_loader, encoder, decoder, n_epochs, learning_rate=0
 
 
 
-DIM_MODEL = 256
-NUM_BLOCK = 1
-NUM_HEAD = 8
-DROPOUT = 0.5
-FE = 1
+
 
 
 encoder = Encoder(dim_model=DIM_MODEL,
                   num_block=NUM_BLOCK,
                   num_head=NUM_HEAD,
                   dropout=DROPOUT,
-                  fe = FE,
+                  fe = FORWARD_EXTENSION,
                   len_dic=len(smi_dic)).to(device)
 
 decoder = Decoder(dim_model=DIM_MODEL,
                   num_block=NUM_BLOCK,
                   num_head=NUM_HEAD,
                   dropout=DROPOUT,
-                  fe=FE,
+                  fe=FORWARD_EXTENSION,
                   longest_coor=longest_coor,
                   ).to(device)
 
 
-train(train_loader, test_loader, encoder, decoder)
+train(train_loader, test_loader, encoder, decoder,
+      n_epochs=N_EPOCHS,
+      learning_rate=LEARNING_RATE,
+      visual_path=VISUAL_PATH,
+      tf_rate=TEACHER_FORCING_RATE)
