@@ -101,11 +101,13 @@ class Data:
         print(f"Data successfully extracted")
         print("----------------------------------------")
         print(f"Size: {len(self.smint_list)}\nLongest SMILES: {self.longest_smi}\nLongest Coordinate: {self.longest_coor}")
-        print("----------------------------------------")
-        print(f"smi_list (SMILES List):\n\t {self.smi_list[0]}")
-        print(f"smint_list (SMILES Integer List):\n\t {self.smint_list[0]}")
-        print(f"coor_list (Coordinate List):\n\t {self.coor_list[0]}")
-        print(f"np_coor_list (Normalized + Padded Coordinate List):\n\t {pad_coor(normalize_coor(self.coor_list), longest_coor=self.longest_coor)[0]}")
+        print("----------------------------------------\n")
+        print("Below is one example for each variable: \n\n")
+        print(f"smi_dic (SMILES Dictionary):\n\t {self.smi_dic}\n\n")
+        print(f"smi_list (SMILES List):\n\t {self.smi_list[0]}\n\n")
+        print(f"smint_list (SMILES Integer List):\n\t {self.smint_list[0]}\n\n")
+        print(f"coor_list (Coordinate List):\n\t {self.coor_list[0]}\n\n")
+        print(f"np_coor_list (Normalized + Padded Coordinate List):\n\t {pad_coor(normalize_coor(self.coor_list), longest_coor=self.longest_coor)[0]}\n\n")
         return self.smint_list, self.coor_list, self.smi_list, self.smi_dic, self.longest_smi, self.longest_coor
 
 
