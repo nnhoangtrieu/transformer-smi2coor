@@ -1,23 +1,21 @@
-import torch 
-import torch.nn as nn 
-import torch.nn.functional as F
-import time
-import random
-from utils.data_preprocess import train_loader, test_loader, smi_list, smi_dic, smint_list, coor_list, np_coor_list, longest_coor, longest_smi, device
-from utils.helper import visualize, timeSince
-
-
-
 # DIM_MODEL : Dimension (hidden size) of the model
+
 # NUM_BLOCK : Number of encoder and decoder block connected
+
 # NUM_HEAD : Number of attention head
+
 # DROPOUT : Dropout rate of nn.Dropout() layer
+
 # FORWARD_EXTENSION : The scalar to scale up the network (Apply for only some layers, DIM_MODEL * FORWARD_EXTENSION)
+
 # N_EPOCHS : Number of epochs
+
 # TEACHER_FORCING_RATE : For example, if set to 0.4, first 40% epoch will be trained using teacher forcing. 
 #                        Teacher forcing: Using known target in training data to predict the next state of RNN.
 #                        NO Teacher Forcing: Using prediction as the input for predicting the next state
+
 # VISUAL_PATH : Name of folder to output attention image during training. I chose 5 random SMILES to output for each train.
+
 
 
 # ---------------------------HYPERPARAMETER-------------------------------------- #
@@ -48,39 +46,13 @@ VISUAL_PATH = 'test folder'
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+import torch 
+import torch.nn as nn 
+import torch.nn.functional as F
+import time
+import random
+from utils.data_preprocess import train_loader, test_loader, smi_list, smi_dic, smint_list, coor_list, np_coor_list, longest_coor, longest_smi, device
+from utils.helper import visualize, timeSince
 
 
 
@@ -107,21 +79,22 @@ class SelfAttention(nn.Module) :
         Q = Q.reshape(B, self.num_head, len_Q, self.dim_head)
         K = K.reshape(B, self.num_head, len_K, self.dim_head)
         V = V.reshape(B, self.num_head, len_V, self.dim_head)
-
-        K_T = K.transpose(2,3)
+        
+        K_T = K.transpose(2,3).contiguous()
 
         attn_score = Q @ K_T
 
-        attn_score = attn_score / (self.dim_head ** 1/2) 
+        attn_score = attn_score / (self.dim_head ** 1/2)
 
         attn_distribution = torch.softmax(attn_score, dim = -1)
 
-        attn = attn_distribution @ V 
+        attn = attn_distribution @ V
 
         attn = attn.reshape(B, len_Q, self.num_head * self.dim_head)
+        
+        attn = self.out(attn)
 
         return attn, attn_distribution
-    
 
 
 class EncoderBlock(nn.Module) :
@@ -130,7 +103,7 @@ class EncoderBlock(nn.Module) :
         self.self_attn = SelfAttention(dim_model,num_head)
         self.norm1 = nn.LayerNorm(dim_model)
         self.norm2 = nn.LayerNorm(dim_model)
-        self.lstm = nn.LSTM(input_size=dim_model, hidden_size=dim_model, batch_first=True)
+        self.lstm = nn.LSTM(input_size=2 * dim_model, hidden_size=dim_model, batch_first=True)
         self.dropout = nn.Dropout(dropout)
         self.feed_forward = nn.Sequential(
             nn.Linear(dim_model, fe * dim_model),
@@ -139,11 +112,15 @@ class EncoderBlock(nn.Module) :
         )
     def forward(self, Q, K, V) :
 
-        all_state, (last_state, _) = self.lstm(Q)
+        attn, self_attn = self.self_attn(Q, Q, Q)
 
-        attn, attn_distribution = self.self_attn(all_state, all_state, all_state)
+        input_lstm = torch.cat((Q, attn), dim = -1)
 
-        out = self.dropout(attn + all_state)
+        all_state, (last_state, _) = self.lstm(input_lstm)
+
+        # attn, attn_distribution = self.self_attn(all_state, all_state, all_state)
+
+        # out = self.dropout(attn + all_state)
 
         # out = self.dropout(self.norm1(attn + all_state))
 
@@ -151,8 +128,8 @@ class EncoderBlock(nn.Module) :
 
         # out = self.dropout(self.norm2(forward + x))
 
-        return out, attn_distribution, last_state
-    
+        return all_state, last_state, self_attn
+
 
 class Encoder(nn.Module) :
     def __init__(self, dim_model, num_block, num_head,
@@ -172,7 +149,7 @@ class Encoder(nn.Module) :
         out = self.dropout(self.embed(x))
 
         for block in self.encoder_blocks : 
-            out, self_attn, last_state = block(out, out, out) 
+            out, last_state, self_attn = block(out, out, out) 
         return out, last_state, self_attn
 
 
@@ -184,7 +161,7 @@ class LSTM(nn.Module) :
 
         self.cross_attn = SelfAttention(dim_model, num_head)
 
-        self.lstm = nn.LSTM(3 + dim_model, dim_model, batch_first=True)
+        self.lstm = nn.GRU(3 + dim_model, dim_model, batch_first=True)
 
         self.out = nn.Linear(dim_model, output_size)
 
@@ -221,15 +198,21 @@ class LSTM(nn.Module) :
 
         d_input = self.dropout(d_input)
 
+        # print(f'd_input: {d_input.shape}')
+        
         attn, attn_distribution = self.cross_attn(Q, e_all, e_all)
 
         input_lstm = torch.cat((attn, d_input), dim = 2)
 
-        output, _ = self.lstm(input_lstm) # Recheck about 2nd param
+        # print(f"input_lstm: {input_lstm.shape}")
+
+        output, d_hidden = self.lstm(input_lstm, d_hidden) # Recheck about 2nd param
 
         output = self.out(output)
 
         return output, d_hidden, attn_distribution
+
+
 class DecoderBlock(nn.Module) :
     def __init__(self, dim_model, num_head, longest_coor, fe, dropout) :
         super(DecoderBlock, self).__init__()
@@ -258,7 +241,6 @@ class DecoderBlock(nn.Module) :
         # out = self.dropout(self.norm2(forward + x))
 
         return output, cross_attn
-    
 
 
 class Decoder(nn.Module) :
@@ -277,7 +259,10 @@ class Decoder(nn.Module) :
             target, cross_attn = block(e_all, e_last, target)
         
         return target, cross_attn
-    
+
+
+r = random.randint(1, len(smi_list))
+
 
 def train_epoch(train_loader,test_loader, encoder, decoder, encoder_optimizer,
           decoder_optimizer, criterion, tf):
@@ -323,7 +308,6 @@ def train_epoch(train_loader,test_loader, encoder, decoder, encoder_optimizer,
 
     return total_loss / len(train_loader), total_test_loss / len(test_loader)
 
-r = random.randint(1, len(smi_list))
 
 def train(train_loader, test_loader, encoder, decoder, n_epochs, learning_rate=0.001,
                print_every=1, visual_path= "", tf_rate = 1):
