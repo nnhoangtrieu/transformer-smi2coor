@@ -80,9 +80,9 @@ from utils.helper import visualize, timeSince
 
 
 
-class SelfAttention(nn.Module) :
+class Attention(nn.Module) :
     def __init__(self, dim_model, num_head) :
-        super(SelfAttention, self).__init__()
+        super(Attention, self).__init__()
         self.dim_model = dim_model
         self.num_head = num_head
         self.dim_head = dim_model // num_head
@@ -124,7 +124,7 @@ class SelfAttention(nn.Module) :
 class EncoderBlock(nn.Module) :
     def __init__(self, dim_model, num_head, fe, dropout) :
         super(EncoderBlock, self).__init__()
-        self.self_attn = SelfAttention(dim_model,num_head)
+        self.self_attn = Attention(dim_model,num_head)
         self.norm1 = nn.LayerNorm(dim_model)
         self.norm2 = nn.LayerNorm(dim_model)
         self.lstm = nn.LSTM(input_size=2 * dim_model, hidden_size=dim_model, batch_first=True)
@@ -183,7 +183,7 @@ class LSTM(nn.Module) :
 
         self.longest_coor = longest_coor
 
-        self.cross_attn = SelfAttention(dim_model, num_head)
+        self.cross_attn = Attention(dim_model, num_head)
 
         self.lstm = nn.GRU(3 + dim_model, dim_model, batch_first=True)
 
