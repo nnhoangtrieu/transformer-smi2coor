@@ -70,10 +70,6 @@ class Data:
         return longest
 
 
-
-
-
-
     def get_smint(self) :
         smint_list = []
         for smi in self.smi_list :

@@ -101,6 +101,8 @@ def evaluate(encoder, decoder, smi, smi_dic, longest_smi) :
     with torch.no_grad() :
         e_out, e_last, self_attn = encoder(smint)
         prediction, cross_attn = decoder(e_out, e_last)
+        # print(f'self_attn: {self_attn.shape}')
+        # print(f'cross_attn: {cross_attn.shape}')
     
     num_head = cross_attn.size(1)
     cross_attn, self_attn = cross_attn.squeeze(), self_attn.squeeze()
@@ -149,6 +151,7 @@ def visualize(encoder,
 
     coor_len = count_atoms(''.join(smi))
     smi_len = len(smi)
+
 
     if mode == "cross" :
         matrix = cross_attn[:coor_len, :smi_len]

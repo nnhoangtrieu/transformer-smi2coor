@@ -33,14 +33,14 @@
 
 
 # ---------------------------HYPERPARAMETER-------------------------------------- #
-DIM_MODEL = 128
-NUM_BLOCK = 1
-NUM_HEAD = 2
+DIM_MODEL = 256
+NUM_BLOCK = 2
+NUM_HEAD = 1 # Please set this > 1 for now. I have not fixed the visualize attention bug for 1 head
 DROPOUT = 0.5
 FORWARD_EXTENSION = 1
 N_EPOCHS = 50
 LEARNING_RATE = 0.001
-TEACHER_FORCING_RATE = 0.4
+TEACHER_FORCING_RATE = 0.3
 VISUAL_PATH = 'attention image'
 # ------------------------------------------------------------------------------- #
 
@@ -177,15 +177,15 @@ class Encoder(nn.Module) :
         return out, last_state, self_attn
 
 
-class LSTM(nn.Module) :
+class GRU(nn.Module) :
     def __init__(self, dim_model, longest_coor, num_head = 1, output_size = 3) :
-        super(LSTM, self).__init__()
+        super(GRU, self).__init__()
 
         self.longest_coor = longest_coor
 
         self.cross_attn = Attention(dim_model, num_head)
 
-        self.lstm = nn.GRU(3 + dim_model, dim_model, batch_first=True)
+        self.gru = nn.GRU(3 + dim_model, dim_model, batch_first=True)
 
         self.out = nn.Linear(dim_model, output_size)
 
@@ -230,7 +230,7 @@ class LSTM(nn.Module) :
 
         # print(f"input_lstm: {input_lstm.shape}")
 
-        output, d_hidden = self.lstm(input_lstm, d_hidden) # Recheck about 2nd param
+        output, d_hidden = self.gru(input_lstm, d_hidden) # Recheck about 2nd param
 
         output = self.out(output)
 
@@ -241,7 +241,7 @@ class DecoderBlock(nn.Module) :
     def __init__(self, dim_model, num_head, longest_coor, fe, dropout) :
         super(DecoderBlock, self).__init__()
 
-        self.lstm = LSTM(dim_model, longest_coor, num_head)
+        self.lstm = GRU(dim_model, longest_coor, num_head)
 
         self.norm1 = nn.LayerNorm(dim_model)
         self.norm2 = nn.LayerNorm(3)
@@ -357,7 +357,7 @@ def train(train_loader, test_loader, encoder, decoder, n_epochs, learning_rate=0
       train_loss_total += train_loss
       test_loss_total += test_loss
 
-      for i in range(5) :
+      for i in range(1) :
          visualize(encoder, decoder, smi_list[r], smi_dic, longest_smi, mode="cross", path=f"{visual_path}", name=f"R{i}-CROSS-E{epoch}")
          visualize(encoder, decoder, smi_list[r], smi_dic, longest_smi, mode="self", path=f"{visual_path}", name=f"R{i}-SELF-E{epoch}")
 
