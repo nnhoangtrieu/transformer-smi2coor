@@ -34,9 +34,9 @@
 
 
 # ---------------------------HYPERPARAMETER-------------------------------------- #
-DIM_MODEL = 128
+DIM_MODEL = 256
 NUM_BLOCK = 1
-NUM_HEAD = 4 
+NUM_HEAD = 8
 DROPOUT = 0.5
 FORWARD_EXTENSION = 1
 N_EPOCHS = 70
@@ -187,7 +187,7 @@ class Encoder(nn.Module) :
 
 
 class GRU(nn.Module) :
-    def __init__(self, dim_model, longest_coor, num_head = 1, output_size = 3) :
+    def __init__(self, dim_model, longest_coor, dropout, num_head = 1, output_size = 3) :
         super(GRU, self).__init__()
 
         self.longest_coor = longest_coor
@@ -199,7 +199,7 @@ class GRU(nn.Module) :
 
         self.out = nn.Linear(dim_model, output_size)
 
-        self.dropout = nn.Dropout(0.1)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, e_all, e_last, target = None) :
         B = e_all.size(0)
@@ -248,7 +248,7 @@ class DecoderBlock(nn.Module) :
     def __init__(self, dim_model, num_head, longest_coor, fe, dropout) :
         super(DecoderBlock, self).__init__()
 
-        self.lstm = GRU(dim_model, longest_coor, num_head)
+        self.lstm = GRU(dim_model, longest_coor,dropout, num_head)
 
         self.norm1 = nn.LayerNorm(dim_model)
         self.norm2 = nn.LayerNorm(3)
