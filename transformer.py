@@ -1,11 +1,12 @@
 # DIM_MODEL : Dimension (hidden size) of the model. 
-#           : It should be 128, 256, 512 (I find 512 is too big), and it should also be divisible for NUM_HEAD
+#           : It should be 128, 256, 512 (I find 512 too big), and it should also be divisible for NUM_HEAD
 
 
-# NUM_BLOCK : Number of encoder and decoder block connected
+# NUM_BLOCK : Number of encoder and decoder block connected. My experiments have shown that increasing this might
+#             make the model too complex which does not lead to better result. 
 
-
-# NUM_HEAD : Number of attention head
+# NUM_HEAD : Number of head for attention. Setting the number of head now only apply to the Self Attention in the Encoder.
+#            I still have not figured out the bug with multihead in Cross Attention in the Decoder.
 
 
 # DROPOUT : Dropout rate of nn.Dropout() layer
@@ -33,14 +34,14 @@
 
 
 # ---------------------------HYPERPARAMETER-------------------------------------- #
-DIM_MODEL = 256
-NUM_BLOCK = 2
-NUM_HEAD = 1 # Please set this > 1 for now. I have not fixed the visualize attention bug for 1 head
+DIM_MODEL = 128
+NUM_BLOCK = 1
+NUM_HEAD = 4 # Should stay at 1
 DROPOUT = 0.5
 FORWARD_EXTENSION = 1
-N_EPOCHS = 50
+N_EPOCHS = 70
 LEARNING_RATE = 0.001
-TEACHER_FORCING_RATE = 0.3
+TEACHER_FORCING_RATE = 0.0
 VISUAL_PATH = 'attention image'
 # ------------------------------------------------------------------------------- #
 
@@ -76,13 +77,31 @@ import torch.nn.functional as F
 import time
 import random
 from utils.data_preprocess import train_loader, test_loader, smi_list, smi_dic, smint_list, coor_list, np_coor_list, longest_coor, longest_smi, device
-from utils.helper import visualize, timeSince
+from utils.helper import visualize, timeSince, visualize2
 
 
+class NN_Attention(nn.Module): # Neural Network Attention 
+    def __init__(self, dim_model):
+        super(NN_Attention, self).__init__()
+        self.Wa = nn.Linear(dim_model, dim_model)
+        self.Ua = nn.Linear(dim_model, dim_model)
+        self.Va = nn.Linear(dim_model, 1)
 
-class Attention(nn.Module) :
+    def forward(self, query, keys):
+        scores = self.Va(torch.tanh(self.Wa(query) + self.Ua(keys)))
+        
+        scores = scores.squeeze(2).unsqueeze(1)
+
+        weights = F.softmax(scores, dim=-1)
+
+        context = torch.bmm(weights, keys)
+
+        return context, weights # context : attention, weights : distribution
+    
+
+class DP_Attention(nn.Module) : # Dot Product Attention
     def __init__(self, dim_model, num_head) :
-        super(Attention, self).__init__()
+        super(DP_Attention, self).__init__()
         self.dim_model = dim_model
         self.num_head = num_head
         self.dim_head = dim_model // num_head
@@ -124,7 +143,7 @@ class Attention(nn.Module) :
 class EncoderBlock(nn.Module) :
     def __init__(self, dim_model, num_head, fe, dropout) :
         super(EncoderBlock, self).__init__()
-        self.self_attn = Attention(dim_model,num_head)
+        self.self_attn = DP_Attention(dim_model,num_head)
         self.norm1 = nn.LayerNorm(dim_model)
         self.norm2 = nn.LayerNorm(dim_model)
         self.lstm = nn.LSTM(input_size=2 * dim_model, hidden_size=dim_model, batch_first=True)
@@ -141,16 +160,6 @@ class EncoderBlock(nn.Module) :
         input_lstm = torch.cat((Q, attn), dim = -1)
 
         all_state, (last_state, _) = self.lstm(input_lstm)
-
-        # attn, attn_distribution = self.self_attn(all_state, all_state, all_state)
-
-        # out = self.dropout(attn + all_state)
-
-        # out = self.dropout(self.norm1(attn + all_state))
-
-        # forward = self.feed_forward(x)
-
-        # out = self.dropout(self.norm2(forward + x))
 
         return all_state, last_state, self_attn
 
@@ -183,7 +192,8 @@ class GRU(nn.Module) :
 
         self.longest_coor = longest_coor
 
-        self.cross_attn = Attention(dim_model, num_head)
+        self.cross_attn = DP_Attention(dim_model, num_head)
+        self.cross_attn_nn = NN_Attention(dim_model)
 
         self.gru = nn.GRU(3 + dim_model, dim_model, batch_first=True)
 
@@ -212,7 +222,7 @@ class GRU(nn.Module) :
 
         d_outputs = torch.cat(d_outputs, dim = 1)
 
-        cross_attn = torch.cat(cross_attn, dim = 2)
+        cross_attn = torch.cat(cross_attn, dim = 1)
         
         return d_outputs, d_hidden, cross_attn
 
@@ -222,16 +232,13 @@ class GRU(nn.Module) :
 
         d_input = self.dropout(d_input)
 
-        # print(f'd_input: {d_input.shape}')
-        
-        attn, attn_distribution = self.cross_attn(Q, e_all, e_all)
+
+        attn, attn_distribution = self.cross_attn_nn(Q, e_all)
 
         input_lstm = torch.cat((attn, d_input), dim = 2)
 
-        # print(f"input_lstm: {input_lstm.shape}")
-
-        output, d_hidden = self.gru(input_lstm, d_hidden) # Recheck about 2nd param
-
+        output, d_hidden = self.gru(input_lstm, d_hidden) 
+        
         output = self.out(output)
 
         return output, d_hidden, attn_distribution
@@ -257,12 +264,6 @@ class DecoderBlock(nn.Module) :
 
     def forward(self, e_all, e_last, target = None) :
         output, _, cross_attn = self.lstm(e_all, e_last, target)
-        
-        # x = self.dropout(output)
-
-        # forward = self.feed_forward(x)
-
-        # out = self.dropout(self.norm2(forward + x))
 
         return output, cross_attn
 
@@ -285,7 +286,9 @@ class Decoder(nn.Module) :
         return target, cross_attn
 
 
-r = random.randint(1, len(smi_list))
+r1 = random.randint(1, len(smi_list))
+r2 = random.randint(1, len(smi_list))
+r3 = random.randint(1, len(smi_list))
 
 
 def train_epoch(train_loader,test_loader, encoder, decoder, encoder_optimizer,
@@ -358,8 +361,12 @@ def train(train_loader, test_loader, encoder, decoder, n_epochs, learning_rate=0
       test_loss_total += test_loss
 
       for i in range(1) :
-         visualize(encoder, decoder, smi_list[r], smi_dic, longest_smi, mode="cross", path=f"{visual_path}", name=f"R{i}-CROSS-E{epoch}")
-         visualize(encoder, decoder, smi_list[r], smi_dic, longest_smi, mode="self", path=f"{visual_path}", name=f"R{i}-SELF-E{epoch}")
+         visualize2(encoder, decoder, smi_list[r1], smi_dic, longest_smi, mode="cross", path=f"{visual_path}", name=f"R1-CROSS-E{epoch}")
+         visualize2(encoder, decoder, smi_list[r2], smi_dic, longest_smi, mode="cross", path=f"{visual_path}", name=f"R2-CROSS-E{epoch}")
+         visualize2(encoder, decoder, smi_list[r3], smi_dic, longest_smi, mode="cross", path=f"{visual_path}", name=f"R3-CROSS-E{epoch}")
+         visualize(encoder, decoder, smi_list[r1], smi_dic, longest_smi, mode="self", path=f"{visual_path}", name=f"R1-SELF-E{epoch}")
+         visualize(encoder, decoder, smi_list[r2], smi_dic, longest_smi, mode="self", path=f"{visual_path}", name=f"R2-SELF-E{epoch}")
+         visualize(encoder, decoder, smi_list[r3], smi_dic, longest_smi, mode="self", path=f"{visual_path}", name=f"R3-SELF-E{epoch}")
 
       if epoch % print_every == 0:
           train_loss_avg = train_loss_total / print_every

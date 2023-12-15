@@ -104,7 +104,7 @@ def evaluate(encoder, decoder, smi, smi_dic, longest_smi) :
         # print(f'self_attn: {self_attn.shape}')
         # print(f'cross_attn: {cross_attn.shape}')
     
-    num_head = cross_attn.size(1)
+    num_head = self_attn.size(1)
     cross_attn, self_attn = cross_attn.squeeze(), self_attn.squeeze()
     cross_attn, self_attn = cross_attn.cpu().numpy(), self_attn.cpu().numpy()
     
@@ -144,35 +144,51 @@ def visualize(encoder,
     
     prediction, cross_attn, self_attn, num_head = evaluate(encoder, decoder, smi, smi_dic, longest_smi)
 
-    # attn, self_attn = attn.squeeze(), self_attn.squeeze()
-    # attn, self_attn = attn.cpu().numpy(), self_attn.cpu().numpy()
 
     smi = replace_duplicate_atom(smi)
 
     coor_len = count_atoms(''.join(smi))
     smi_len = len(smi)
 
+    if num_head == 1 :
+        if mode == "cross" :
+            matrix = cross_attn[:coor_len, :smi_len]
+            plot_attn(matrix, smi, mode, path, f"{name}")
+            
+        if mode == "self" :
+            matrix = self_attn[:smi_len, :smi_len]
+            plot_attn(matrix, smi, mode, path, f"{name}")
+    else :
+        if mode == "cross" :
+            for i, head in enumerate(cross_attn) :
+                matrix = head[:coor_len, :smi_len]
+                plot_attn(matrix, smi, mode, path, f"H{i}-{name}")
+        
+        if mode == "self" :
+            for i, head in enumerate(self_attn) :
+                matrix = head[:smi_len, :smi_len]
+                plot_attn(matrix, smi, mode, path, f"H{i}-{name}")
 
-    if mode == "cross" :
+
+
+def visualize2(encoder,
+               decoder,
+               smi, 
+               smi_dic,
+               longest_smi,
+               mode="cross",
+               path="",
+               name = 1) :
+    
+    prediction, cross_attn, self_attn, num_head = evaluate(encoder, decoder, smi, smi_dic, longest_smi)
+    smi = replace_duplicate_atom(smi)
+
+    coor_len = count_atoms(''.join(smi))
+    smi_len = len(smi)
+
+    if mode == 'cross' :
         matrix = cross_attn[:coor_len, :smi_len]
-    if mode == "self" :
+        plot_attn(matrix, smi, mode, path, f"{name}")
+    if mode == 'self' :
         matrix = self_attn[:smi_len, :smi_len]
-    
-    if mode == "cross" :
-        for i, head in enumerate(cross_attn) :
-            matrix = head[:coor_len, :smi_len]
-            plot_attn(matrix, smi, mode, path, f"H{i}-{name}")
-    
-    if mode == "self" :
-        for i, head in enumerate(self_attn) :
-            matrix = head[:smi_len, :smi_len]
-            plot_attn(matrix, smi, mode, path, f"H{i}-{name}")
-
-    # for i in range(1, num_head) :
-    #     if mode == "cross" :
-    #         matrix = matrix[i]
-    #         matrix = cross_attn[:coor_len, :smi_len]
-    #     if mode == "self" :
-    #         matrix = matrix[i]
-    #         matrix = self_attn[:smi_len, :smi_len]
-    #     plot_attn(matrix[i], smi, mode, path, f"H{i}-{name}")
+        plot_attn(matrix, smi, mode, path, f"{name}")
