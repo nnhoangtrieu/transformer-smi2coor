@@ -23,7 +23,7 @@
 #                      + NO Teacher Forcing: Using prediction as the input for predicting the next state
 
 
-# VISUAL_PATH : Name of folder to output attention image during training. I chose 5 random SMILES to output for each train.
+# VISUAL_PATH : Name of folder to output attention image during training. I chose 3 random SMILES to output for each train.
 #             : I have already created a folder name "attention image"
 #             : The image is in the format H-R-CROSS-E. 
 #             : H1 means the attention of head number 1
