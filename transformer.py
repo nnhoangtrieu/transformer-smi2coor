@@ -36,7 +36,7 @@
 # ---------------------------HYPERPARAMETER-------------------------------------- #
 DIM_MODEL = 128
 NUM_BLOCK = 1
-NUM_HEAD = 4 # Should stay at 1
+NUM_HEAD = 4 
 DROPOUT = 0.5
 FORWARD_EXTENSION = 1
 N_EPOCHS = 70
