@@ -1,5 +1,5 @@
 # DIM_MODEL : Dimension (hidden size) of the model. 
-#           : It should be 128, 256, 512 (I find 512 too big), and it should also be divisible for NUM_HEAD
+#           : It should be 128, 256, 512 (I find 512 too big), and it should also be divisible by NUM_HEAD
 
 
 # NUM_BLOCK : Number of encoder and decoder block connected. My experiments have shown that increasing this might
@@ -96,7 +96,7 @@ class NN_Attention(nn.Module): # Neural Network Attention
 
         context = torch.bmm(weights, keys)
 
-        return context, weights # context : attention, weights : distribution
+        return context, weights 
     
 
 class DP_Attention(nn.Module) : # Dot Product Attention
