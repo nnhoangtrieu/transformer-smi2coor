@@ -34,7 +34,7 @@
 
 
 # ---------------------------HYPERPARAMETER-------------------------------------- #
-DIM_MODEL = 128
+DIM_MODEL = 256
 
 NUM_ENCODER_BLOCK = 1
 NUM_SELF_ATTENTION_HEAD = 2

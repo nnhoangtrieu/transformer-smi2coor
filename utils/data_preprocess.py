@@ -83,11 +83,15 @@ class Data:
 
 
     def replace_duplicate_atom(self, smi_list) :
-        smi_list = [smi.replace('X', 'Na')
-                        .replace('Y', 'Cl')
-                        .replace('Z', 'Br')
-                        .replace('T', 'Ba') for smi in smi_list]
 
+        # smi_list = [smi.replace('X', 'Na')
+        #                 .replace('Y', 'Cl')
+        #                 .replace('Z', 'Br')
+        #                 .replace('T', 'Ba') for smi in smi_list]
+        smi_list = [smi.replace('Na', 'X')
+                        .replace('Cl', 'Y')
+                        .replace('Br', 'Z')
+                        .replace('Ba', 'T') for smi in smi_list]
         return smi_list
 
 

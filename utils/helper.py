@@ -71,10 +71,10 @@ def int2smi(input, invert_dic) :
 
 def replace_duplicate_atom(smi) :
     smi = list(smi[:-1])
-    smi = [smi.replace('Na', 'X')
-                    .replace('Cl', 'Y')
-                    .replace('Br', 'Z')
-                    .replace('Ba', 'T') for smi in smi]
+    smi = [smi.replace('X', 'Na')
+                    .replace('Y', 'Cl')
+                    .replace('Z', 'Br')
+                    .replace('T', 'Ba') for smi in smi]
 
     return smi
 
